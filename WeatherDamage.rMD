@@ -1,0 +1,106 @@
+---
+title: "Cost of Weather in Lives and Dollars"
+author: "Jerad Acosta"
+date: "October 26, 2014"
+output: html_document
+---
+## The Cost of Weather in Lives and Dollars
+
+### Synopsis
+The data analyzed herein comes from the NCDC who collects if from the National
+Weather Service which collects and receives the data from a variety of sources.
+
+This data contains myriad information on weather data from accross the US.
+This includes but is not limited to: locations, type of weather, time, as well
+as tides and other natural phenomina.
+
+Of greatest significance to this report is the collection of data on the impact
+weather has on both the populations health and the economy as a whole.
+
+To address this question variables such as Fatalities and Injuries were collected
+and organized according to source and magnitude.
+
+Additionally, damages to property, required storm preperation and other factors
+such as crop destruction and related costs from delayed processes.
+
+
+### Data Processing
+Load Data and libraries
+```{r }
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(reshape2)
+library(grid)
+library(gridExtra)
+data <- read.csv("repdata-data-StormData.csv")
+
+```
+
+## Search for significant factors of damage to population health
+**Subset data to contrain only factors of interest with respect to population health**
+```{r }
+health <- select(data, EVTYPE, FATALITIES, INJURIES)
+```
+
+Find range in Fatalities and Injuries to deduce most significant events
+```{r}
+range(health$FATALITIES)
+sum(health$FATALITIES)
+range(health$INJURIES)
+sum(health$INJURIES)
+```
+
+In our 902297 observations we find 15145 fatalities ranging from 0 to 583
+and 140528 injuries ranging 0 to 1700
+Now lets filter to most signiticant Events with respect to Fatalities
+To avoid confounding loss of data from events that may not cause massive
+damage at once but over time let's include all events which results in at least
+```{r}
+healthmelt <- melt(health, id=c("EVTYPE"), measure.vars=c("FATALITIES","INJURIES"))
+healthsum <- dcast(healthmelt, EVTYPE ~ variable, sum)
+```
+
+Now Arrange and filter out data with no
+```{r}
+top.fatal <- arrange(healthsum, desc(FATALITIES))
+top.fatal <- filter(top.fatal, FATALITIES > 1)
+top.injure <- arrange(healthsum, desc(INJURIES))
+top.injure <- filter(top.injure, INJURIES > 1)
+```
+
+**Use graph to see how data is distributed accross categorical data such as Weather Events**
+```{r}
+par(mfcol = c(2,2), oma = c(0,0,2,0))
+barplot(top.fatal$FATALITIES, xlab = "Weather Event", ylab = "Fatalities")
+barplot(top.fatal$FATALITIES, ylab = "Injuries",
+        sub = "Highest Ranked fatalities subset")
+barplot(top.fatal$INJURIES, xlab = "Weather Event", ylab = "Injuries")
+barplot(top.fatal$FATALITIES, ylab = "Fatalities",
+        sub = "Highest Ranked Injuries subset")
+mtext("Grid of Worst Weather Events by ranked and plotted by Injury and Fatality count")
+par(mfrow = c(1,1))
+```
+
+From the data here we can see that the majority of the damage is done by
+a few significant Weather Event Types.
+Too look Closer at them we can subset and graph with labels
+
+```{r two column ggplot2, fig.width= 16}
+# Top Fatal Weather Events
+fat <- qplot(EVTYPE, FATALITIES, data = top.fatal[1:7,], fill = EVTYPE,
+             geom = "bar", stat="identity", main = "Top Causes of Death")
+# Top Injuries Weather Events
+inj <- qplot(EVTYPE, INJURIES, data = top.injure[1:7,], fill = EVTYPE,
+             geom = "bar", stat="identity", main = "Top Cuase of Injury")
+grid.arrange(fat, inj, ncol = 2, main = "Damage to Health By Weather Event")
+```
+
+
+### Results
+From this we can conclude that the most devistating of all weather events
+to the health of citizens in the United States is by and Far Tornados.
+So much so, that it is on a different scale of magnitude.
+
+It is also worth noting that Excessive Heat shows up quite significantly
+and that floods show up in two forms of *flooding* and *flash flooding*
